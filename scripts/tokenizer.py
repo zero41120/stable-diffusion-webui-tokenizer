@@ -1,8 +1,5 @@
 import html
-
-from ldm.modules.encoders.modules import FrozenCLIPEmbedder, FrozenOpenCLIPEmbedder
 from modules import script_callbacks, shared
-import open_clip.tokenizer
 
 import gradio as gr
 
@@ -25,6 +22,9 @@ css = """
 class VanillaClip:
     def __init__(self, clip):
         self.clip = clip
+        assert hasattr(self.clip, "tokenizer"), "VanillaClip requires 'tokenizer' attribute"
+        assert hasattr(self.clip.tokenizer, "get_vocab"), "Tokenizer must have 'get_vocab'"
+        assert hasattr(self.clip.tokenizer, "byte_decoder"), "Tokenizer must have 'byte_decoder'"
 
     def vocab(self):
         return self.clip.tokenizer.get_vocab()
@@ -35,7 +35,9 @@ class VanillaClip:
 class OpenClip:
     def __init__(self, clip):
         self.clip = clip
-        self.tokenizer = open_clip.tokenizer._tokenizer
+        assert hasattr(self.clip, "tokenizer"), "OpenClip requires 'tokenizer' attribute"
+        assert hasattr(self.clip.tokenizer, "_tokenizer"), "Tokenizer must have '_tokenizer'"
+        self.tokenizer = self.clip.tokenizer._tokenizer
 
     def vocab(self):
         return self.tokenizer.encoder
@@ -43,15 +45,23 @@ class OpenClip:
     def byte_decoder(self):
         return self.tokenizer.byte_decoder
 
+def initialize_clip_instance():
+    # Find all candidate CLIP
+    # For SDXL, it is FrozenCLIPEmbedderForSDXLWithCustomWords which is initalized in sd_hijack_clip.py as of the embedders
+    base = shared.sd_model.cond_stage_model
+    clip_candidates = [base.wrapped] + [embedder.wrapped for embedder in base.embedders if hasattr(embedder, 'wrapped')]
+    initializers = [VanillaClip, OpenClip]
+    for clip in clip_candidates:
+        for initializer in initializers:
+            try:
+                return initializer(clip)
+            except AssertionError:
+                continue
+
+    raise RuntimeError('Failed to initialize a compatible CLIP instance from any candidate')
 
 def tokenize(text, input_is_ids=False):
-    clip = shared.sd_model.cond_stage_model.wrapped
-    if isinstance(clip, FrozenCLIPEmbedder):
-        clip = VanillaClip(shared.sd_model.cond_stage_model.wrapped)
-    elif isinstance(clip, FrozenOpenCLIPEmbedder):
-        clip = OpenClip(shared.sd_model.cond_stage_model.wrapped)
-    else:
-        raise RuntimeError(f'Unknown CLIP model: {type(clip).__name__}')
+    clip = initialize_clip_instance()
 
     if input_is_ids:
         tokens = [int(x.strip()) for x in text.split(",")]
