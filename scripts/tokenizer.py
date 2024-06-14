@@ -45,10 +45,13 @@ class OpenClip:
         return self.tokenizer.byte_decoder
 
 def initialize_clip_instance():
-    # Find all candidate CLIP
-    # For SDXL, it is FrozenCLIPEmbedderForSDXLWithCustomWords which is initalized in sd_hijack_clip.py as of the embedders
     base = shared.sd_model.cond_stage_model
-    clip_candidates = [base.wrapped] + [embedder.wrapped for embedder in base.embedders if hasattr(embedder, 'wrapped')]
+    clip_candidates = [base.wrapped]
+    # For SDXL, it is FrozenCLIPEmbedderForSDXLWithCustomWords and some others which are initalized in sd_hijack_clip.py in the embedders
+    if hasattr(base, 'embedders'):
+        for embedder in base.embedders:
+            if hasattr(embedder, 'wrapped'):
+                clip_candidates.append(embedder.wrapped)
     initializers = [VanillaClip, OpenClip]
     for clip in clip_candidates:
         for initializer in initializers:
@@ -56,7 +59,6 @@ def initialize_clip_instance():
                 return initializer(clip)
             except AssertionError:
                 continue
-
     raise RuntimeError('Failed to initialize a compatible CLIP instance from any candidate')
 
 def tokenize(text, input_is_ids=False):
