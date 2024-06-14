@@ -6,16 +6,15 @@ import gradio as gr
 
 css = """
 .tokenizer-token{
+    opacity: 0.8;
     cursor: pointer;
+    --body-text-color: #000;
 }
-.tokenizer-token-0 {background: rgba(255, 0, 0, 0.05);}
-.tokenizer-token-0:hover {background: rgba(255, 0, 0, 0.15);}
-.tokenizer-token-1 {background: rgba(0, 255, 0, 0.05);}
-.tokenizer-token-1:hover {background: rgba(0, 255, 0, 0.15);}
-.tokenizer-token-2 {background: rgba(0, 0, 255, 0.05);}
-.tokenizer-token-2:hover {background: rgba(0, 0, 255, 0.15);}
-.tokenizer-token-3 {background: rgba(255, 156, 0, 0.05);}
-.tokenizer-token-3:hover {background: rgba(255, 156, 0, 0.15);}
+.tokenizer-token:hover {opacity: 1;}
+.tokenizer-token-0 {background: var(--primary-300);}
+.tokenizer-token-1 {background: var(--primary-400);}
+.tokenizer-token-2 {background: var(--primary-500);}
+.tokenizer-token-3 {background: var(--primary-600);}
 """
 
 
